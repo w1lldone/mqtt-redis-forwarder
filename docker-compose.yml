@@ -1,0 +1,26 @@
+# Docker Compose file Reference (https://docs.docker.com/compose/compose-file/)
+
+version: '3'
+
+services:
+
+  # App Service
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - redis
+    networks:
+      - backend
+  
+  # Redis service
+  redis:
+    image: "redis:alpine"
+    restart: unless-stopped
+    networks:
+      - backend
+
+networks:
+  backend:
