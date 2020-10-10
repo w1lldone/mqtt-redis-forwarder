@@ -8,6 +8,7 @@ This app can subscribe to a MQTT topic and forward the received messages to a re
 - Redis server installed
 ### Build and run
 - Copy `config.yml.example` to `config.yml` and fill in the needed configuration
+- run `go mod download`
 - run `go build -o main .`
 - run `./main`
 
