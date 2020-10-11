@@ -16,6 +16,8 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
+    volumes:
+      - ./config.yml:/app/config.yml
     networks:
       - backend
 

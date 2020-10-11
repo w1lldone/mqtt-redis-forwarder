@@ -27,11 +27,10 @@ FROM alpine:latest
 
 RUN apk --no-cache add ca-certificates bash
 
-WORKDIR /root/
+WORKDIR /app
 
 # Copy the Pre-built binary file from the previous stage
 COPY --from=builder /app/main .
-COPY --from=builder /app/config.yml .
 
 # Command to run the executable
 CMD ["./main"]
