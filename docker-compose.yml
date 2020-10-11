@@ -3,21 +3,18 @@
 version: '3'
 
 services:
+  # Redis service
+  redis:
+    image: "redis:alpine"
+    restart: unless-stopped
+    networks:
+      - backend
 
   # App Service
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    restart: unless-stopped
-    depends_on:
-      - redis
-    networks:
-      - backend
-  
-  # Redis service
-  redis:
-    image: "redis:alpine"
     restart: unless-stopped
     networks:
       - backend
