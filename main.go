@@ -37,7 +37,7 @@ func main() {
 	password := viper.GetString("mqtt.password")
 	user := viper.GetString("mqtt.user")
 	id := viper.GetString("mqtt.id")
-	cleansess := viper.GetBool("mqtt.cleaness")
+	cleansess := viper.GetBool("mqtt.cleansess")
 	qos := viper.GetInt("mqtt.qos")
 
 	opts := mqtt.NewClientOptions()
