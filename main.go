@@ -39,6 +39,9 @@ func main() {
 		DB:       redisDb,
 	})
 
+	pubsub := rdb.Subscribe(ctx, redisChannel)
+	ch := pubsub.Channel()
+
 	topic := viper.GetString("mqtt.topic")
 	broker := viper.GetString("mqtt.broker")
 	password := viper.GetString("mqtt.password")
@@ -74,17 +77,18 @@ func main() {
 	}
 
 	for {
-		incoming := <-choke
-		fmt.Printf("RECEIVED TOPIC: %s MESSAGE: %s\n", incoming[0], incoming[1])
+		select {
+		case incoming := <-choke:
+			fmt.Printf("RECEIVED TOPIC: %s MESSAGE: %s\n", incoming[0], incoming[1])
 
-		if subscriberIsDisconnected(incoming[1]) {
-			fmt.Println("Restarting Subscriber")
-			os.Exit(0)
-		}
-
-		err := rdb.Publish(ctx, redisChannel, incoming[1]).Err()
-		if err != nil {
-			panic(err)
+			err := rdb.Publish(ctx, redisChannel, incoming[1]).Err()
+			if err != nil {
+				panic(err)
+			}
+		case msg := <-ch:
+			if subscriberIsDisconnected(msg.Payload) {
+				os.Exit(0)
+			}
 		}
 	}
 }
@@ -96,7 +100,6 @@ func subscriberIsDisconnected(jsonMessage string) bool {
 		log.Println(err)
 	}
 
-	
 	if message.Reconnecting == true {
 		fmt.Printf("Subscriber reconnected \n")
 		return true
