@@ -63,6 +63,8 @@ func main() {
 		choke <- [2]string{msg.Topic(), string(msg.Payload())}
 	}
 
+	opts.SetDefaultPublishHandler(handler)
+
 	opts.SetOnConnectHandler(func(c mqtt.Client) {
 		fmt.Println("connection established")
 		if token := c.Subscribe(topic, byte(qos), handler); token.Wait() && token.Error() != nil {
