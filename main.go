@@ -2,13 +2,20 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/go-redis/redis/v8"
 	"github.com/spf13/viper"
 )
+
+// Message struc
+type Message struct {
+	Reconnecting bool `json:"reconnecting"`
+}
 
 func main() {
 	viper.SetConfigName("config")
@@ -32,6 +39,9 @@ func main() {
 		DB:       redisDb,
 	})
 
+	pubsub := rdb.Subscribe(ctx, redisChannel)
+	ch := pubsub.Channel()
+
 	topic := viper.GetString("mqtt.topic")
 	broker := viper.GetString("mqtt.broker")
 	password := viper.GetString("mqtt.password")
@@ -49,8 +59,18 @@ func main() {
 
 	choke := make(chan [2]string)
 
-	opts.SetDefaultPublishHandler(func(client mqtt.Client, msg mqtt.Message) {
+	handler := func(client mqtt.Client, msg mqtt.Message) {
 		choke <- [2]string{msg.Topic(), string(msg.Payload())}
+	}
+
+	opts.SetDefaultPublishHandler(handler)
+
+	opts.SetOnConnectHandler(func(c mqtt.Client) {
+		fmt.Println("connection established")
+		if token := c.Subscribe(topic, byte(qos), handler); token.Wait() && token.Error() != nil {
+			fmt.Println(token.Error())
+			os.Exit(1)
+		}
 	})
 
 	client := mqtt.NewClient(opts)
@@ -58,17 +78,34 @@ func main() {
 		panic(token.Error())
 	}
 
-	if token := client.Subscribe(topic, byte(qos), nil); token.Wait() && token.Error() != nil {
-		fmt.Println(token.Error())
-		os.Exit(1)
-	}
-
 	for {
-		incoming := <-choke
-		fmt.Printf("RECEIVED TOPIC: %s MESSAGE: %s\n", incoming[0], incoming[1])
-		err := rdb.Publish(ctx, redisChannel, incoming[1]).Err()
-		if err != nil {
-			panic(err)
+		select {
+		case incoming := <-choke:
+			fmt.Printf("RECEIVED TOPIC: %s MESSAGE: %s\n", incoming[0], incoming[1])
+
+			err := rdb.Publish(ctx, redisChannel, incoming[1]).Err()
+			if err != nil {
+				panic(err)
+			}
+		case msg := <-ch:
+			if subscriberIsDisconnected(msg.Payload) {
+				os.Exit(0)
+			}
 		}
 	}
+}
+
+func subscriberIsDisconnected(jsonMessage string) bool {
+	var message Message
+	err := json.Unmarshal([]byte(jsonMessage), &message)
+	if err != nil {
+		log.Println(err)
+	}
+
+	if message.Reconnecting == true {
+		fmt.Printf("Subscriber reconnected \n")
+		return true
+	}
+
+	return false
 }

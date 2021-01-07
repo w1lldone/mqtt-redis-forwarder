@@ -15,7 +15,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    restart: unless-stopped
+    restart: always
     volumes:
       - ./config.yml:/app/config.yml
     networks:
